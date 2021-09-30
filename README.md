@@ -6,7 +6,7 @@ A autodraw tool for Steam game Draw &amp; Guess
 # Build
 in code:
 ```python
-check_game = False
+check_game = True
 ```
 in cmd:
 ```shell
