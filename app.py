@@ -9,10 +9,6 @@ import pyautogui
 
 # 预设值常量
 diff_limit = 400  # 相似颜色最大距离
-point_size = 10  # 画笔大小
-reduce_color = True  # 减少颜色
-color_num = 5  # 颜色数量
-max_dot_pitch_multiple = 4  # 最大连线间距倍数 默认为1
 draw_area = 0.72  # 绘画区域比例
 pause_point = 0.06  # 画点时间
 pause_line = 0.1  # 画线时间
@@ -59,19 +55,13 @@ def get_image():
         return img
 
 
-# 开始画图
 def start():
-    global diff_limit
-    global point_size
-    global reduce_color
-    global color_num
-    global max_dot_pitch_multiple
-    global draw_area
-    global pause_point
-    global pause_line
-    global check_game
+    # 粗糙画图
+    point_size = 32  # 画笔大小
+    reduce_color = True  # 减少颜色
+    color_num = 5  # 颜色数量
+    max_dot_pitch_multiple = 0  # 最大连线间距倍数
 
-    global img_show
     global running
     global target_img_path
     global colors_all
@@ -113,6 +103,112 @@ def start():
     else:
         resize = screen_h * draw_area / th
     target_img = target_img.resize((int(tw * resize), int(th * resize)), Image.ANTIALIAS)
+    target_img2 = target_img
+    tw, th = target_img.size
+
+    # 绘画起始点
+    start_x = int((screen_w * 0.5 * draw_area) - (tw * 0.5) + (screen_w * (1 - draw_area) * 0.5) + point_size * 0.5)
+    start_y = int((screen_h * 0.5 * draw_area) - (th * 0.5) + (screen_h * (1 - draw_area) * 0.5) + point_size * 0.5)
+
+    # 目标图片缩小
+    tw, th = target_img.size
+    target_img = target_img.resize((round(tw / point_size), round(th / point_size)), Image.ANTIALIAS)
+    tw, th = target_img.size
+
+    # 减少大量颜色
+    if reduce_color:
+        target_img = target_img.convert('P', palette=Image.ADAPTIVE, colors=color_num)
+        target_img = target_img.convert('RGB', palette=Image.ADAPTIVE, colors=color_num)
+    target_img_p = target_img.load()
+
+    color_dic_temp = {}  # 临时字典
+    def find_color(p):
+        # 忽略白色
+        if colors_diff((255, 254, 246), p) < diff_limit:
+            return None, None
+
+        # 扫描临时字典
+        if p in color_dic_temp:
+            return color_dic_temp[p]
+
+        # 找最接近的颜色
+        color = closest(p)
+
+        # 获取坐标
+        rx, ry = colors_all_dic[(color[0], color[1], color[2])]
+
+        color_dic_temp[p] = (rx, ry)
+        return rx, ry
+
+    # 计算所有取色点
+    draw_step = {}
+    for y in range(th):  # 先横着画
+        for x in range(tw):
+            m, n = find_color(target_img_p[x, y])
+            if not (m is None):
+                # 记录操作步骤
+                if not (m, n) in draw_step:
+                    draw_step[(m, n)] = []
+                draw_step[(m, n)].append((start_x + point_size * x, start_y + point_size * y))
+
+    # 排序, 先画颜色多的点
+    sort = sorted(draw_step, key=lambda k: len(draw_step[k]), reverse=True)
+
+    # 选择最大画笔
+    if check_game:
+        pyautogui.click(1307, 73)
+
+    # 删除最浅的颜色
+    if len(sort) == color_num:
+        sort.remove(color_dic_temp[max(list(color_dic_temp.keys()))])
+
+    # 统计需要画的线
+    for the_color in sort:
+        last_point = (0, 0)
+        lines = []
+        line = {}
+        for draw_point in draw_step[the_color]:
+            # 同一行 且 距离够近
+            if draw_point[1] == last_point[1] and not abs(
+                    draw_point[0] - last_point[0]) > max_dot_pitch_multiple * point_size:
+                line['end'] = draw_point
+            else:
+                if last_point[0] != 0:
+                    lines.append(line)
+                    line = {}
+                line['start'] = draw_point
+            last_point = draw_point
+
+        # 画线
+        pyautogui.PAUSE = pause_point
+        pyautogui.click(the_color[0], the_color[1])  # 色板取色
+        for the_line in lines:
+            pyautogui.click(x=the_line['start'][0], y=the_line['start'][1])
+            if 'end' in the_line:
+                time = ((((the_line['end'][0] - the_line['start'][0]) ** 2) + (
+                            (the_line['end'][1] - the_line['start'][1]) ** 2)) ** 0.5) / point_size * 0.025
+                time = max(pause_line, time)
+                pyautogui.dragTo(the_line['end'][0], the_line['end'][1], time, button='left')
+
+    draw2(target_img2)
+
+    running = False
+
+    window.exit()
+
+# 精细画图
+def draw2(target_img2):
+    point_size = 10  # 画笔大小
+    reduce_color = True  # 减少颜色
+    color_num = 5  # 颜色数量
+    max_dot_pitch_multiple = 4  # 最大连线间距倍数
+
+    global img_show
+    global target_img_path
+    global colors_all
+    global colors_all_dic
+
+    target_img = target_img2
     tw, th = target_img.size
 
     # 绘画起始点
@@ -171,9 +267,9 @@ def start():
     # 排序, 先画颜色多的点
     sort = sorted(draw_step, key=lambda k: len(draw_step[k]), reverse=True)
 
-    # 选择最小画笔
+    # 选择中等画笔
     if check_game:
-        pyautogui.click(1407, 73)
+        pyautogui.click(1357, 73)
 
     # 删除最浅的颜色
     if len(sort) == color_num:
@@ -203,11 +299,9 @@ def start():
             pyautogui.click(x=the_line['start'][0], y=the_line['start'][1])
             if 'end' in the_line:
                 time = ((((the_line['end'][0] - the_line['start'][0]) ** 2) + (
-                            (the_line['end'][1] - the_line['start'][1]) ** 2)) ** 0.5) / point_size * 0.025
+                        (the_line['end'][1] - the_line['start'][1]) ** 2)) ** 0.5) / point_size * 0.025
                 time = max(pause_line, time)
                 pyautogui.dragTo(the_line['end'][0], the_line['end'][1], time, button='left')
-    running = False
-
 
 add_hotkey('f9', start)
 
