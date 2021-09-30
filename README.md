@@ -10,5 +10,5 @@ check_game = False
 ```
 in cmd:
 ```shell
-pyinstaller -F -i app.ico app.py
+pyinstaller -wF -i app.ico app.py
 ```

@@ -12,7 +12,7 @@ diff_limit = 400  # 相似颜色最大距离
 draw_area = 0.72  # 绘画区域比例
 pause_point = 0.06  # 画点时间
 pause_line = 0.1  # 画线时间
-check_game = False  # 是否检测游戏运行
+check_game = True  # 是否检测游戏运行
 # 屏幕大小 目前只支持全屏1080p
 screen_w = 1920
 screen_h = 1080
