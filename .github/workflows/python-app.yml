@@ -1,4 +1,4 @@
-name: Windows Pyinstaller
+name: Windows build by PyInstaller
 
 on:
   push:
@@ -17,9 +17,9 @@ jobs:
     - name: Package Application
       uses: JackMcKew/pyinstaller-action-windows@main
       with:
-        path: src
+        path: ./
 
     - uses: actions/upload-artifact@v2
       with:
         name: AutoDrawGuess
-        path: src/dist/windows
+        path: ./dist/windows
